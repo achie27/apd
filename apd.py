@@ -1,3 +1,5 @@
+import requests
+
 a = []
 with open("anime.txt", "r") as f:
 	a = list(f)
