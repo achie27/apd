@@ -2,7 +2,7 @@ const fs = require("fs");
 const request = require("request");
 const puppeteer = require("puppeteer");
 
-let anime_link = "https://animepahe.com/anime/gekkan-shoujo-nozaki-kun-specials";
+let anime_link = "https://animepahe.com/anime/anohana";
 let mp4upload_links = [];
 let episode_links = [];
 let dl_links = [];
@@ -10,31 +10,35 @@ let total_eps = 0;
 
 function get_links(ep_id, res, total_eps, anime_title, sub, ep_no, bd){
 	return function(){
+		console.log(ep_no);
 		let promise = new Promise((resolve, reject) => {
 			request("https://animepahe.com/api?m=embed&id="+ep_id+"&p=mp4upload", (err, res, html) => {
 				if(!err){
-					resolve(JSON.parse(res["body"])["data"][""+ep_id]["720p"]["url"]);
+					resolve([JSON.parse(res["body"])["data"][""+ep_id]["720p"]["url"], ep_no]);
 				}
 			})
 		});
 			
-		promise.then((link) => {
-			mp4upload_links.push(link);
+		promise.then((ob) => {
+			let link=ob[0], num=ob[1];
+			mp4upload_links.push([link, num]);
 			if(mp4upload_links.length == total_eps){
 				console.log("got links");
+				console.log(mp4upload_links);
 				
 				(async () => {
 					process.setMaxListeners(0);
 					const browser = await puppeteer.launch();
 					const page = await browser.newPage();
 					for(i in mp4upload_links){
-						await page.goto(mp4upload_links[i]);
+						await page.goto(mp4upload_links[i][0]);
 						let vid = await page.evaluate(() => {
 							return document.getElementsByClassName('jw-video')[0].src
 						});
-						let no = Number(i)+1;
+						let no = Number(mp4upload_links[i][1]);
 						let f_name = "AnimePahe_"+anime_title+"_-_"+no+"_720p_"+sub+".mp4";
 						dl_links.push([f_name, vid]);
+						console.log([f_name, vid])
 
 						if(dl_links.length == total_eps){
 							download();
@@ -45,6 +49,8 @@ function get_links(ep_id, res, total_eps, anime_title, sub, ep_no, bd){
 			
 				})();
 			}
+		}).catch((err) => {
+			console.log(err);
 		});
 	}
 }
